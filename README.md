@@ -14,6 +14,7 @@ Everything runs in the browser. There is no server and no account: drafts live i
 - **Threads**: numbered tabs per post, connector lines in the preview, `Auto-split into thread` for long text (splits on sentence boundaries, never mid-word or mid-URL), and `Number posts 1/n`.
 - **Quote posts and polls**, rendered the way X renders them.
 - **X's real character counting** — URLs always count 23, CJK and emoji count 2, emoji ZWJ sequences count as one grapheme. The ring and counter go amber at 20 left and red past the limit.
+- **Premium long posts**: past 280 characters the preview collapses to ten lines with a blue "Show more" that expands in place, the way X shows long posts in the timeline. The limit becomes 25,000. Switch it off in the Profile panel to draft against the plain 280 limit instead.
 - **Saved drafts** — name them, reload them, rename, duplicate, delete, and export/import the whole set as JSON.
 - **Export**: download the preview as a 2× PNG, copy it to the clipboard, or copy the thread as plain text.
 
@@ -26,6 +27,8 @@ The published page is encrypted, not merely hidden: the whole app is an AES-256-
 Unlocking is remembered for the browser session, so a reload doesn't cost a re-type.
 
 **Scope of the protection:** the plaintext source also lives in this repository (`app/`), so the gate stops casual and drive-by access to the hosted tool — it is not a secrecy boundary against someone who reads the repo. Nothing private is in the source: your drafts, images and profile never leave your browser. To make it a real boundary, remove `app/` from the repo (`git rm -r --cached app`) and keep the source locally only.
+
+The composer opens as Konstantin Pilz ([@KonstantinPilz](https://x.com/KonstantinPilz)) with the real profile picture and blue badge; change any of it in the Profile panel.
 
 ## Local development
 

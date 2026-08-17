@@ -50,6 +50,7 @@ profileBindings.forEach(([sel, set]) => {
   on($(sel), 'change', (e) => update((s) => set(s, e.target.value)));
 });
 on($('#in-metrics'), 'change', (e) => update((s) => { s.showMetrics = e.target.checked; }));
+on($('#in-longpost'), 'change', (e) => update((s) => { s.premiumLong = e.target.checked; }));
 
 function readImage(file) {
   return new Promise((res, rej) => {
@@ -133,7 +134,8 @@ function renderThreadTabs() {
   const bar = $('#thread-tabs');
   if (!bar) return;
   bar.innerHTML = state.posts.map((p, i) => {
-    const over = (guard('remaining', () => T.remaining(p.text)) ?? 280) < 0;
+    const used = guard('weightedLength', () => T.weightedLength(p.text)) ?? 0;
+    const over = used > activeLimit();
     return `<button type="button" class="thread-tab${p.id === state.activeId ? ' is-active' : ''}${over ? ' is-over' : ''}" data-id="${p.id}">${i + 1}</button>`;
   }).join('');
 }
@@ -145,24 +147,37 @@ on($('#thread-tabs'), 'click', (e) => {
 /* ── character counter ─────────────────────────────────────────────── */
 
 const CIRC = 2 * Math.PI * 10;
+const BASE_LIMIT = () => T.MAX_WEIGHTED || 280;
+const LONG_LIMIT = () => T.LONG_MAX || 25000;
+// Premium raises the ceiling to 25,000. The ring still tracks the 280 mark, because
+// that's where the post starts rendering collapsed behind "Show more".
+const activeLimit = () => (state.premiumLong ? LONG_LIMIT() : BASE_LIMIT());
+
 function renderCounter() {
   const p = activePost();
   const used = guard('weightedLength', () => T.weightedLength(p ? p.text : '')) ?? 0;
-  const left = (T.MAX_WEIGHTED || 280) - used;
+  const limit = activeLimit();
+  const left = limit - used;
+  const past280 = used > BASE_LIMIT();
   const counter = $('#counter');
   const ring = $('.ring');
   const fg = $('#ring-fg');
+  // 280 stays a meaningful mark even on Premium — it's where the post starts
+  // collapsing behind "Show more" — so keep counting down to it either way.
+  const left280 = BASE_LIMIT() - used;
+  const nearBase = !past280 && left280 <= 20;
   if (counter) {
-    counter.textContent = left <= 20 ? String(left) : '';
-    counter.classList.toggle('is-warning', left <= 20 && left >= 0);
+    if (state.premiumLong && past280) counter.textContent = `${used.toLocaleString()} / ${limit.toLocaleString()}`;
+    else counter.textContent = nearBase || left <= 20 ? String(Math.min(left, left280)) : '';
+    counter.classList.toggle('is-warning', (nearBase || left <= 20) && left >= 0);
     counter.classList.toggle('is-over', left < 0);
   }
   if (fg) {
-    const frac = Math.min(1, used / (T.MAX_WEIGHTED || 280));
+    const frac = Math.min(1, used / BASE_LIMIT());
     fg.style.strokeDasharray = `${(frac * CIRC).toFixed(2)} ${CIRC.toFixed(2)}`;
   }
   if (ring) {
-    ring.classList.toggle('is-warning', left <= 20 && left >= 0);
+    ring.classList.toggle('is-warning', (nearBase || left <= 20) && left >= 0);
     ring.classList.toggle('is-over', left < 0);
   }
 }
@@ -367,6 +382,7 @@ function syncInputs() {
   set('#in-m-likes', state.metrics.likes);
   set('#in-m-views', state.metrics.views);
   if ($('#in-metrics')) $('#in-metrics').checked = !!state.showMetrics;
+  if ($('#in-longpost')) $('#in-longpost').checked = !!state.premiumLong;
   syncCardInputs();
   syncQuoteInputs();
 }

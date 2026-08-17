@@ -20,16 +20,28 @@ import { icon } from './icons.js';
 // load it lazily, fall back to a local escape+linebreak renderer until (or
 // unless) it arrives, and re-render once it does.
 let renderTextHTML = null;
+let weightedLength = null;
+let maxWeighted = null;
 let lastRoot = null;
 let lastState = null;
 
 import('./text.js')
   .then((mod) => {
-    if (mod && typeof mod.renderTextHTML === 'function') {
+    if (!mod) return;
+    let upgraded = false;
+    if (typeof mod.renderTextHTML === 'function') {
       renderTextHTML = mod.renderTextHTML;
-      // Upgrade the already-painted preview now that entity linking works.
-      if (lastRoot && lastState) renderPreview(lastState, lastRoot);
+      upgraded = true;
     }
+    // Long-post clamping needs both the counter and the limit; without them we
+    // render every post un-clamped rather than guess at a character budget.
+    if (typeof mod.weightedLength === 'function' && typeof mod.MAX_WEIGHTED === 'number') {
+      weightedLength = mod.weightedLength;
+      maxWeighted = mod.MAX_WEIGHTED;
+      upgraded = true;
+    }
+    // Upgrade the already-painted preview now that entity linking works.
+    if (upgraded && lastRoot && lastState) renderPreview(lastState, lastRoot);
   })
   .catch(() => {
     /* text.js unavailable — the local fallback below keeps the preview alive */
@@ -332,6 +344,26 @@ function actionsHTML(state) {
   );
 }
 
+// ── Long posts (X Premium) ──────────────────────────────────────────────────
+// Past 280 weighted characters X clamps the body to ~10 lines in the timeline
+// and puts a blue "Show more" under it. The clamp itself is CSS
+// (`.x-text--clamped`); render.js only decides who gets the class and button.
+
+// Ids whose long post the user has expanded. Module-level because renderPreview
+// rebuilds innerHTML on every keystroke — without this the block would snap
+// shut mid-sentence while typing.
+const expandedIds = new Set();
+
+/** True when `text` runs past the 280-weighted-char limit. */
+function isLongPost(text) {
+  if (!weightedLength || !maxWeighted) return false; // text.js not in yet
+  try {
+    return weightedLength(text) > maxWeighted;
+  } catch (e) {
+    return false; // counting blew up — render un-clamped rather than blank
+  }
+}
+
 // ── Post card ───────────────────────────────────────────────────────────────
 
 /**
@@ -364,7 +396,18 @@ export function postCardHTML(post, state, opts) {
   // Empty draft: show a muted placeholder rather than a collapsed, broken card.
   let textBlock = '';
   if (hasText) {
-    textBlock = `<div class="x-text">${textHTML(text)}</div>`;
+    // Long posts clamp to ~10 lines with a "Show more" toggle underneath,
+    // unless this id is already expanded.
+    const long = isLongPost(text);
+    const expanded = long && expandedIds.has(String(p.id || ''));
+    const cls = long && !expanded ? 'x-text x-text--clamped' : 'x-text';
+    textBlock = `<div class="${cls}">${textHTML(text)}</div>`;
+    if (long) {
+      textBlock +=
+        '<button type="button" class="x-showmore">' +
+        (expanded ? 'Show less' : 'Show more') +
+        '</button>';
+    }
   } else if (!hasAttachments) {
     textBlock = '<div class="x-text"><span class="x-placeholder">What’s happening?</span></div>';
   }
@@ -407,6 +450,42 @@ function connectorFor(index, total) {
   return 'both';
 }
 
+// ── "Show more" toggle ──────────────────────────────────────────────────────
+// One delegated listener per root, attached once. renderPreview replaces
+// innerHTML on every keystroke, so per-button listeners would leak and a second
+// root-level listener would double-toggle (expand then instantly collapse).
+
+const wiredRoots = new WeakSet();
+
+/** Expand/collapse the long post whose "Show more" button was clicked. */
+function onPreviewClick(event) {
+  const target = event.target;
+  if (!target || typeof target.closest !== 'function') return;
+
+  const button = target.closest('.x-showmore');
+  if (!button) return;
+
+  const article = button.closest('.x-post');
+  const block = article && article.querySelector('.x-text');
+  if (!block) return;
+
+  const nowExpanded = block.classList.toggle('x-text--clamped') === false;
+  button.textContent = nowExpanded ? 'Show less' : 'Show more';
+
+  // Remember it, so the next re-render doesn't undo the click.
+  const id = String((article.dataset && article.dataset.id) || '');
+  if (nowExpanded) expandedIds.add(id);
+  else expandedIds.delete(id);
+}
+
+/** Idempotent — safe to call on every render. */
+function wirePreview(root) {
+  if (!root || typeof root.addEventListener !== 'function') return;
+  if (wiredRoots.has(root)) return;
+  wiredRoots.add(root);
+  root.addEventListener('click', onPreviewClick);
+}
+
 /**
  * Rebuild the preview from state. Full re-render — cheap at thread sizes and it
  * keeps the output a pure function of state.
@@ -417,6 +496,7 @@ export function renderPreview(state, root) {
   if (!root) return;
   lastRoot = root;
   lastState = state;
+  wirePreview(root);
 
   const posts = (state && Array.isArray(state.posts) && state.posts.length)
     ? state.posts

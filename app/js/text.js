@@ -13,6 +13,8 @@
  */
 
 export const MAX_WEIGHTED = 280;
+/** X Premium "long post" ceiling. Same weighting rules, bigger budget. */
+export const LONG_MAX = 25000;
 export const URL_WEIGHT = 23;
 
 /* ------------------------------------------------------------------ *
@@ -88,15 +90,41 @@ function fallbackGraphemes(s) {
   return out;
 }
 
+/**
+ * V8's Intl.Segmenter iterator degrades quadratically with input length (a 25k
+ * long post costs ~250ms, a 32k one ~350ms), so we feed it fixed-size windows
+ * and stitch the results. Restarting on a cluster boundary is safe: every UAX
+ * #29 rule looks at the pair around the break plus context that never crosses a
+ * completed cluster, so a window's clusters are final except its *last* one,
+ * which may still grow into the text past the window and is therefore re-cut.
+ */
+const SEG_WINDOW = 4096;
+
+function segmentWindowed(s) {
+  const out = [];
+  let i = 0;
+  while (i < s.length) {
+    let size = SEG_WINDOW;
+    for (;;) {
+      const end = Math.min(i + size, s.length);
+      const atEnd = end >= s.length;
+      const parts = [];
+      for (const seg of _segmenter.segment(s.slice(i, end))) parts.push(seg.segment);
+      // One cluster filling the whole window may continue past it: widen and retry.
+      if (!atEnd && parts.length <= 1) { size *= 2; continue; }
+      if (!atEnd) parts.pop(); // the trailing cluster is re-cut with more context
+      for (const p of parts) { out.push(p); i += p.length; }
+      break;
+    }
+  }
+  return out;
+}
+
 /** Split a string into grapheme clusters. */
 export function graphemes(text) {
   const s = str(text);
   if (!s) return [];
-  if (_segmenter) {
-    const out = [];
-    for (const seg of _segmenter.segment(s)) out.push(seg.segment);
-    return out;
-  }
+  if (_segmenter) return segmentWindowed(s);
   return fallbackGraphemes(s);
 }
 
@@ -133,9 +161,35 @@ function graphemeWeight(g) {
   return w;
 }
 
+/**
+ * Code points that can pull a neighbour into a multi-code-point cluster —
+ * combining marks, ZWJ/ZWNJ, variation selectors, Hangul jamo, Indic prepends,
+ * regional indicators, skin tones, tag characters — or that read as emoji. CR is
+ * included because CR LF is one cluster. Text containing none of these is
+ * exactly one cluster per code point, so we can add up code point weights and
+ * skip the segmenter: the common case, and roughly 10x faster on long posts.
+ * The ranges were derived by testing every code point below U+30000 against
+ * Intl.Segmenter; the non-unicode fallback keeps only plain ASCII on this path.
+ */
+const RE_CLUSTERY = safeRe(
+  '[\\p{M}\\p{Extended_Pictographic}\\r\\u200C\\u200D]' +
+  '|[\\u0600-\\u0605\\u06DD\\u070F\\u0890\\u0891\\u08E2\\u0D4E\\u0E33\\u0EB3]' +
+  '|[\\u1100-\\u11FF\\uA960-\\uA97C\\uD7B0-\\uD7FF\\uFF9E\\uFF9F]' +
+  '|[\\u{110BD}\\u{110CD}\\u{111C2}\\u{111C3}\\u{1193F}\\u{11941}\\u{11A3A}' +
+    '\\u{11A84}-\\u{11A89}\\u{11D46}\\u{11F02}]' +
+  '|[\\u{1F1E6}-\\u{1F1FF}\\u{1F3FB}-\\u{1F3FF}\\u{E0020}-\\u{E007F}]',
+  'u',
+  '[^\\x20-\\x7E\\t\\n]'
+);
+
 /** Weight of a plain (URL-free) run of text. */
 function rawWeight(s) {
   let w = 0;
+  if (!RE_CLUSTERY.test(s)) {
+    // No cluster-forming code point anywhere: one code point, one grapheme.
+    for (const ch of s) w += codePointWeight(ch.codePointAt(0));
+    return w;
+  }
   for (const g of graphemes(s)) w += graphemeWeight(g);
   return w;
 }
@@ -154,9 +208,26 @@ export function weightedLength(text) {
   return total;
 }
 
+/**
+ * Characters left before hitting `max` (may go negative). Pass LONG_MAX for a
+ * Premium long post; the default keeps the classic 280 budget.
+ */
+export function remainingIn(text, max = MAX_WEIGHTED) {
+  const m = typeof max === 'number' && isFinite(max) ? max : MAX_WEIGHTED;
+  return m - weightedLength(text);
+}
+
 /** Characters left before hitting the 280 limit (may go negative). */
 export function remaining(text) {
-  return MAX_WEIGHTED - weightedLength(text);
+  return remainingIn(text, MAX_WEIGHTED);
+}
+
+/**
+ * Does this text need a Premium long post? True past 280 weighted characters,
+ * including past LONG_MAX — "too long to post at all" is still a long post.
+ */
+export function isLongPost(text) {
+  return weightedLength(text) > MAX_WEIGHTED;
 }
 
 /* ------------------------------------------------------------------ *
@@ -437,9 +508,9 @@ function splitSentences(s) {
  */
 function pack(text, budget) {
   const chunks = [];
-  let cur = '';
+  let cur = '', curW = 0; // curW tracks weightedLength(cur) incrementally
 
-  const flush = () => { const t = cur.trim(); if (t) chunks.push(t); cur = ''; };
+  const flush = () => { const t = cur.trim(); if (t) chunks.push(t); cur = ''; curW = 0; };
 
   const hardCut = (piece) => {
     flush();
@@ -450,6 +521,7 @@ function pack(text, budget) {
       buf += g; w += gw;
     }
     cur = buf;
+    curW = weightedLength(buf); // `w` is raw: it misses the 23-per-URL collapse
   };
 
   // level 0 -> split on single newlines, 1 -> sentences, 2 -> words
@@ -465,11 +537,21 @@ function pack(text, budget) {
     return null;
   };
 
+  // Re-weighing `cur + sep + piece` on every append is quadratic, which a 25k
+  // long post feels badly. Separators are always ASCII whitespace and no entity
+  // (URL, @, #, $) can span whitespace — each one's leading boundary class
+  // accepts it — so weights simply add across the join and `cur` never needs
+  // re-counting.
   const tryAdd = (piece, sep, level) => {
     if (!piece || !piece.trim()) return;
-    const cand = cur ? cur + sep + piece : piece;
-    if (weightedLength(cand) <= budget) { cur = cand; return; }
-    if (weightedLength(piece) <= budget) { flush(); cur = piece; return; }
+    const pieceW = weightedLength(piece);
+    const candW = cur ? curW + sep.length + pieceW : pieceW;
+    if (candW <= budget) {
+      cur = cur ? cur + sep + piece : piece;
+      curW = candW;
+      return;
+    }
+    if (pieceW <= budget) { flush(); cur = piece; curW = pieceW; return; }
     const sub = subdivide(piece, level);
     if (!sub) { hardCut(piece); return; }
     for (const p of sub.parts) tryAdd(p, sub.sep, sub.next);

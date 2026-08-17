@@ -297,6 +297,45 @@
 
 .x-link:hover { text-decoration: underline; }
 
+/* Long-post truncation (X Premium posts over 280 characters). render.js adds
+   .x-text--clamped and emits .x-showmore as the next sibling, then drops the
+   class again when the reader expands. Both the line clamp and the height cap
+   live only on the modifier, so removing it restores plain pre-wrap block flow
+   with no leftover display or max-height. */
+.x-text--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 10;
+  line-clamp: 10;
+  -webkit-box-orient: vertical;
+  /* Same 10 lines at the 20px line-height above, as a fallback for engines
+     that drop the clamp on a pre-wrap box. Where the clamp works it cuts at
+     exactly this height, so the two never disagree. */
+  max-height: calc(10 * 20px);
+  overflow: hidden;
+}
+
+/* "Show more" — a bare accent-coloured link, flush under the clamped text. */
+.x-showmore {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--x-font);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--x-accent);
+  cursor: pointer;
+}
+
+.x-showmore:hover { text-decoration: underline; }
+
+.x-showmore:focus-visible {
+  outline: 2px solid var(--x-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* ---------------------------------------------------------------------------
    6. Media grid
    The container clips to 16px with overflow:hidden, which produces exactly
