@@ -1,0 +1,918 @@
+/* ============================================================================
+   app.css — chrome around the X preview (app bar, composer, panels, controls)
+   x.css owns the post card itself and the --x-* tokens. Everything here uses
+   its own --app-* tokens so the chrome stays legible in all three themes and
+   never fights the preview for attention.
+   ========================================================================== */
+
+/* ── 0. Reset ─────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── 1. Theme tokens ──────────────────────────────────────────────────────
+   Every colour below is theme-scoped. Nothing in this file may hardcode a
+   colour outside these blocks (the fixed-white text on accent fills excepted). */
+
+:root {
+  --app-accent: var(--x-accent, #1d9bf0);
+  --app-radius: 12px;
+  --app-gutter: 24px;
+  --app-bar-h: 56px;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --app-bg:            #f7f9f9;
+  --app-surface:       #ffffff;
+  --app-surface-2:     #eff3f4;
+  --app-surface-hover: #e6ebec;
+  --app-text:          #0f1419;
+  --app-text-dim:      #536471;
+  --app-border:        #dfe4e6;
+  --app-border-strong: #cfd9de;
+  --app-accent-soft:   rgba(29, 155, 240, 0.10);
+  --app-accent-ring:   rgba(29, 155, 240, 0.40);
+  --app-danger:        #d81f2c;
+  --app-danger-soft:   rgba(216, 31, 44, 0.10);
+  --app-warn:          #a67300;
+  --app-bar-bg:        rgba(255, 255, 255, 0.82);
+  --app-overlay:       rgba(15, 20, 25, 0.62);
+  --app-scroll:        #c2ccd1;
+  --app-shadow:        0 1px 2px rgba(15, 20, 25, 0.06);
+}
+
+[data-theme="dim"] {
+  color-scheme: dark;
+  --app-bg:            #101a23;
+  --app-surface:       #17232e;
+  --app-surface-2:     #1f2d3a;
+  --app-surface-hover: #263847;
+  --app-text:          #f7f9f9;
+  --app-text-dim:      #8b98a5;
+  --app-border:        #2f3f4c;
+  --app-border-strong: #3d4e5c;
+  --app-accent-soft:   rgba(29, 155, 240, 0.16);
+  --app-accent-ring:   rgba(29, 155, 240, 0.50);
+  --app-danger:        #f4212e;
+  --app-danger-soft:   rgba(244, 33, 46, 0.16);
+  --app-warn:          #ffd400;
+  --app-bar-bg:        rgba(16, 26, 35, 0.80);
+  --app-overlay:       rgba(0, 0, 0, 0.66);
+  --app-scroll:        #3d4e5c;
+  --app-shadow:        0 1px 2px rgba(0, 0, 0, 0.30);
+}
+
+[data-theme="lightsout"] {
+  color-scheme: dark;
+  --app-bg:            #000000;
+  --app-surface:       #0c0d0e;
+  --app-surface-2:     #16181c;
+  --app-surface-hover: #1f2226;
+  --app-text:          #e7e9ea;
+  --app-text-dim:      #71767b;
+  --app-border:        #2f3336;
+  --app-border-strong: #3e4144;
+  --app-accent-soft:   rgba(29, 155, 240, 0.16);
+  --app-accent-ring:   rgba(29, 155, 240, 0.50);
+  --app-danger:        #f4212e;
+  --app-danger-soft:   rgba(244, 33, 46, 0.16);
+  --app-warn:          #ffd400;
+  --app-bar-bg:        rgba(0, 0, 0, 0.80);
+  --app-overlay:       rgba(0, 0, 0, 0.70);
+  --app-scroll:        #3e4144;
+  --app-shadow:        0 1px 2px rgba(0, 0, 0, 0.50);
+}
+
+::selection { background: var(--app-accent); color: #fff; }
+
+/* ── 2. App bar ───────────────────────────────────────────────────────────── */
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: var(--app-bar-h);
+  padding: 0 var(--app-gutter);
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-bar-bg);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+}
+
+.app-bar__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--app-text);
+  white-space: nowrap;
+}
+
+.app-bar__logo {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: currentColor;
+}
+
+.app-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .app-bar { padding: 8px 16px; }
+}
+
+/* ── 3. Segmented control (theme switch) ──────────────────────────────────── */
+
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.seg > button {
+  appearance: none;
+  border: 0;
+  border-radius: 9999px;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--app-text-dim);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.seg > button:hover { background: var(--app-surface-2); color: var(--app-text); }
+
+.seg > button[aria-pressed="true"] {
+  background: var(--app-accent);
+  color: #fff;
+}
+
+.seg > button:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+/* ── 4. Buttons ───────────────────────────────────────────────────────────── */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--app-text);
+  background: var(--app-surface-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease,
+              border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:hover { background: var(--app-surface-hover); }
+.btn:active { transform: translateY(0.5px); }
+
+.btn:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn--primary {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #fff;
+}
+.btn--primary:hover { background: #1a8cd8; border-color: #1a8cd8; }
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--app-border-strong);
+  color: var(--app-text);
+}
+.btn--ghost:hover { background: var(--app-surface-2); }
+
+.btn--danger {
+  background: transparent;
+  border-color: var(--app-border-strong);
+  color: var(--app-danger);
+}
+.btn--danger:hover {
+  background: var(--app-danger-soft);
+  border-color: var(--app-danger);
+}
+
+/* Round icon button — the + / − thread controls */
+.btn--round {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── 5. Layout: composer left, sticky preview right ───────────────────────── */
+
+.layout {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: var(--app-gutter);
+  display: grid;
+  grid-template-columns: minmax(380px, 1fr) minmax(340px, 620px);
+  gap: var(--app-gutter);
+  align-items: start;
+}
+
+.pane { min-width: 0; }
+
+.pane--compose {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pane--preview {
+  position: sticky;
+  top: calc(var(--app-bar-h) + 16px);   /* 72px */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* The post card is a fixed 598px; let it scroll rather than break the page. */
+.preview-scroll {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+/* Stack below 980px, preview first. */
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
+    gap: 16px;
+  }
+  .pane--preview {
+    order: -1;
+    position: static;
+  }
+}
+
+/* ── 6. Panels (<details> cards) ──────────────────────────────────────────── */
+
+.panel {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  overflow: hidden;
+}
+
+.panel > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--app-text);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;                       /* never show the raw marker */
+  transition: background-color 0.15s ease;
+}
+.panel > summary::-webkit-details-marker { display: none; }
+.panel > summary::marker { content: ""; }
+
+.panel > summary:hover { background: var(--app-surface-2); }
+.panel > summary:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: -2px;
+}
+
+/* Chevron: a triangle that points right when closed, down when open. */
+.panel > summary::after {
+  content: "";
+  margin-left: auto;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid currentColor;
+  opacity: 0.55;
+  transform: rotate(-90deg);
+  transition: transform 0.18s ease;
+}
+.panel[open] > summary::after { transform: rotate(0deg); }
+
+.panel[open] > summary { border-bottom: 1px solid var(--app-border); }
+
+.panel__body { padding: 16px; }
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+  align-items: start;
+}
+.field--wide { grid-column: 1 / -1; }
+.grid2 > .btn { grid-column: 1 / -1; justify-self: start; }
+
+@media (max-width: 620px) {
+  .grid2 { grid-template-columns: 1fr; }
+}
+
+/* ── 7. Form fields ───────────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field > span {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--app-text-dim);
+}
+
+.field input[type="text"],
+.field input[type="url"],
+.field input[type="number"],
+.field select,
+.field textarea,
+.drafts-bar select,
+.row input:not([type="file"]),
+.poll-option-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.35;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field textarea { resize: vertical; min-height: 68px; }
+
+.field input::placeholder,
+.row input::placeholder,
+.field textarea::placeholder,
+.editor::placeholder {
+  color: var(--app-text-dim);
+  opacity: 1;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.drafts-bar select:focus,
+.row input:not([type="file"]):focus,
+.poll-option-row input:focus {
+  outline: none;
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
+}
+
+/* Native select gets a custom caret so it matches the inputs in all themes. */
+.field select,
+.drafts-bar select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px 6px;
+  cursor: pointer;
+}
+[data-theme="light"] .field select,
+[data-theme="light"] .drafts-bar select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='%23536471' d='M0 0h10L5 6z'/%3E%3C/svg%3E");
+}
+[data-theme="dim"] .field select,
+[data-theme="dim"] .drafts-bar select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='%238b98a5' d='M0 0h10L5 6z'/%3E%3C/svg%3E");
+}
+[data-theme="lightsout"] .field select,
+[data-theme="lightsout"] .drafts-bar select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='%2371767b' d='M0 0h10L5 6z'/%3E%3C/svg%3E");
+}
+.field select option,
+.drafts-bar select option { background: var(--app-surface); color: var(--app-text); }
+
+/* Checkbox rows put the control inline on the right. */
+.field--check {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+}
+.field--check > span { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.field--check input[type="checkbox"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--app-accent);
+  cursor: pointer;
+}
+
+/* input + button pairs */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.row > input { flex: 1 1 auto; min-width: 0; }
+.row > input[type="file"] { flex: 1 1 40%; }
+.row > .btn { flex: none; }
+
+/* File inputs: compact, with a ghost-button trigger. */
+input[type="file"] {
+  max-width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--app-text-dim);
+}
+input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+input[type="file"]::file-selector-button:hover { background: var(--app-surface-2); }
+input[type="file"]::-webkit-file-upload-button {
+  margin-right: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+input[type="file"]:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+
+/* ── 7b. Saved-drafts toolbar ─────────────────────────────────────────────
+   Sits above the profile panel. Deliberately one size smaller than the
+   app-bar controls so it reads as a utility strip, not a second toolbar.
+   Placed after the field rules so its compact select overrides them.       */
+
+.drafts-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 9px 10px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
+/* The draft picker takes the slack; long names truncate rather than wrap. */
+.drafts-bar select {
+  flex: 1 1 180px;
+  min-width: 180px;
+  max-width: 100%;
+  padding: 6px 28px 6px 10px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* One size down from .btn — a size override, not a new variant. */
+.drafts-bar .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.drafts-bar__status {
+  flex: 0 1 auto;
+  margin-left: auto;
+  min-height: 18px;            /* reserve the line so the bar never jumps */
+  line-height: 18px;
+  font-size: 13px;
+  color: var(--app-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.drafts-bar__status.is-error { color: var(--app-danger); }
+.drafts-bar__status.is-ok { color: var(--app-accent); }
+
+/* Narrow: let the buttons wrap and give the status its own full-width line. */
+@media (max-width: 620px) {
+  .drafts-bar select { flex-basis: 100%; min-width: 0; }
+  .drafts-bar__status {
+    flex: 1 0 100%;
+    margin-left: 0;
+    white-space: normal;
+  }
+}
+
+/* ── 8. Composer card ─────────────────────────────────────────────────────── */
+
+.composer {
+  position: relative;
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.composer:focus-within {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
+}
+
+.composer__head { padding: 10px 12px 0; }
+.composer__head:has(> .thread-tabs:empty) { display: none; }
+
+.editor {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 24px;
+  resize: vertical;
+  min-height: 140px;
+}
+.editor:focus { outline: none; }
+
+/* Drag-and-drop target */
+[data-dropzone].is-dragover {
+  outline: 2px dashed var(--app-accent);
+  outline-offset: -5px;
+  background: var(--app-accent-soft);
+}
+
+.composer__extras:not(:empty) { padding: 0 16px 12px; }
+.composer__extras:empty { display: none; }
+
+.composer__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--app-border);
+}
+
+/* ── 9. Thread tabs ───────────────────────────────────────────────────────── */
+
+.thread-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.thread-tabs:empty { display: none; }
+
+.thread-tab {
+  position: relative;
+  flex: none;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--app-text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease,
+              border-color 0.15s ease;
+}
+.thread-tab:hover { background: var(--app-surface-2); color: var(--app-text); }
+.thread-tab:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+
+.thread-tab.is-active {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #fff;
+}
+
+/* Over the character limit: red ring plus a small dot marker. */
+.thread-tab.is-over {
+  border-color: var(--app-danger);
+  box-shadow: 0 0 0 2px var(--app-danger-soft);
+}
+.thread-tab.is-over::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--app-danger);
+}
+
+/* ── 10. Media chips ──────────────────────────────────────────────────────── */
+
+.composer__media {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+.composer__media:empty { display: none; }
+
+.media-chip {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--app-surface-2);
+}
+.media-chip img,
+.media-chip video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-chip__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--app-overlay);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.media-chip__remove:hover { background: var(--app-danger); }
+.media-chip__remove svg { width: 11px; height: 11px; fill: currentColor; }
+
+.media-chip__alt {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  height: 18px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--app-overlay);
+  color: #fff;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 18px;
+  cursor: pointer;
+}
+.media-chip__alt:hover { background: var(--app-accent); }
+.media-chip.has-alt .media-chip__alt {
+  background: var(--app-accent);
+  color: #fff;
+}
+
+.media-chip__remove:focus-visible,
+.media-chip__alt:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+
+/* Alt-text editor overlays the bottom of the chip when opened. */
+.media-chip__alt-input {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font-family: inherit;
+  font-size: 11px;
+}
+.media-chip__alt-input:focus { outline: 1px solid var(--app-accent); }
+
+/* ── 11. Composer bottom bar: tools, counter, ring ────────────────────────── */
+
+.composer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--app-border);
+}
+
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tool {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--app-accent);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.tool:hover { background: var(--app-accent-soft); }
+.tool:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 1px; }
+.tool:disabled { opacity: 0.5; pointer-events: none; }
+.tool svg { width: 19px; height: 19px; fill: currentColor; }
+
+.count-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.counter {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-dim);
+  min-width: 2ch;
+  text-align: right;
+}
+.counter.is-warning { color: var(--app-warn); }
+.counter.is-over { color: var(--app-danger); font-weight: 700; }
+
+/* Progress ring — JS drives stroke-dasharray on .ring__fg */
+.ring {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.ring circle { fill: none; stroke-width: 2; }
+.ring__bg { stroke: var(--app-border-strong); }
+.ring__fg {
+  stroke: var(--app-accent);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.2s ease, stroke 0.2s ease;
+}
+.ring.is-warning .ring__fg { stroke: var(--app-warn); }
+.ring.is-over .ring__fg { stroke: var(--app-danger); }
+
+.divider {
+  display: inline-block;
+  flex: none;
+  width: 1px;
+  height: 24px;
+  background: var(--app-border-strong);
+}
+
+/* ── 12. Hints and poll rows ──────────────────────────────────────────────── */
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-text-dim);
+}
+.hint--center { text-align: center; }
+
+.poll-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.poll-option-row input { flex: 1 1 auto; }
+.poll-option-row .btn { flex: none; }
+
+/* ── 13. Scrollbars ───────────────────────────────────────────────────────── */
+
+* { scrollbar-width: thin; scrollbar-color: var(--app-scroll) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--app-scroll);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--app-border-strong); }
+
+/* ── 14. Motion preferences ───────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── 15. Print: only the preview card ─────────────────────────────────────── */
+
+@media print {
+  body > *:not(.layout) { display: none !important; }
+  .layout > *:not(.pane--preview) { display: none !important; }
+  .pane--preview > *:not(.preview-scroll) { display: none !important; }
+
+  body { background: #fff; }
+  .layout {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+  .pane--preview { position: static; display: block; }
+  .preview-scroll { display: block; overflow: visible; padding: 0; }
+}

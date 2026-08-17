@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en" data-theme="dim">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>X Drafter</title>
+<meta name="description" content="Draft X posts and threads with a live, pixel-accurate preview.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M18.9 1.2h3.7l-8.1 9.2 9.5 12.5h-7.4l-5.8-7.6-6.7 7.6H.4l8.6-9.8L0 1.2h7.6l5.2 6.9ZM17.6 20.7h2L6.5 3.2H4.3Z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./css/x.css">
+<link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+
+<header class="app-bar">
+  <div class="app-bar__brand">
+    <svg viewBox="0 0 24 24" class="app-bar__logo" aria-hidden="true"><path d="M18.9 1.2h3.7l-8.1 9.2 9.5 12.5h-7.4l-5.8-7.6-6.7 7.6H.4l8.6-9.8L0 1.2h7.6l5.2 6.9ZM17.6 20.7h2L6.5 3.2H4.3Z"/></svg>
+    <span>Drafter</span>
+  </div>
+  <div class="app-bar__actions">
+    <div class="seg" id="theme-switch" role="group" aria-label="Theme">
+      <button type="button" data-theme-value="light">Light</button>
+      <button type="button" data-theme-value="dim">Dim</button>
+      <button type="button" data-theme-value="lightsout">Lights out</button>
+    </div>
+    <button type="button" class="btn" id="btn-copy-text">Copy text</button>
+    <button type="button" class="btn" id="btn-copy-png">Copy image</button>
+    <button type="button" class="btn btn--primary" id="btn-export-png">Download PNG</button>
+    <button type="button" class="btn btn--ghost" id="btn-reset" title="Clear the draft">Reset</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ── Left: composer ───────────────────────────────────────────── -->
+  <section class="pane pane--compose" aria-label="Composer">
+
+    <div class="drafts-bar" id="drafts-bar">
+      <select id="draft-select" aria-label="Saved drafts"></select>
+      <button type="button" class="btn" id="btn-draft-save">Save</button>
+      <button type="button" class="btn btn--ghost" id="btn-draft-saveas">Save as…</button>
+      <button type="button" class="btn btn--ghost" id="btn-draft-rename">Rename</button>
+      <button type="button" class="btn btn--ghost btn--danger" id="btn-draft-delete">Delete</button>
+      <button type="button" class="btn btn--ghost" id="btn-draft-export">Export</button>
+      <button type="button" class="btn btn--ghost" id="btn-draft-import">Import</button>
+      <input type="file" id="in-draft-import" accept="application/json" hidden>
+      <span class="drafts-bar__status" id="draft-status" aria-live="polite"></span>
+    </div>
+
+    <details class="panel" id="panel-profile">
+      <summary>Profile</summary>
+      <div class="panel__body grid2">
+        <label class="field"><span>Display name</span>
+          <input type="text" id="in-name" maxlength="50" placeholder="Your Name"></label>
+        <label class="field"><span>Handle</span>
+          <input type="text" id="in-handle" maxlength="15" placeholder="yourhandle"></label>
+        <label class="field"><span>Avatar</span>
+          <input type="file" id="in-avatar" accept="image/*"></label>
+        <label class="field"><span>Badge</span>
+          <select id="in-verified">
+            <option value="none">None</option>
+            <option value="blue">Blue (Premium)</option>
+            <option value="gold">Gold (Organization)</option>
+            <option value="grey">Grey (Government)</option>
+          </select></label>
+        <label class="field"><span>Timestamp label</span>
+          <input type="text" id="in-time" placeholder="2h"></label>
+        <label class="field field--check"><span>Show engagement counts</span>
+          <input type="checkbox" id="in-metrics"></label>
+        <label class="field"><span>Replies</span><input type="text" id="in-m-replies"></label>
+        <label class="field"><span>Reposts</span><input type="text" id="in-m-reposts"></label>
+        <label class="field"><span>Likes</span><input type="text" id="in-m-likes"></label>
+        <label class="field"><span>Views</span><input type="text" id="in-m-views"></label>
+      </div>
+    </details>
+
+    <div class="composer" id="composer" data-dropzone>
+      <div class="composer__head">
+        <div class="thread-tabs" id="thread-tabs"></div>
+      </div>
+
+      <textarea id="editor" class="editor" rows="7" spellcheck="true"
+                placeholder="What's happening?"></textarea>
+
+      <div class="composer__media" id="media-strip"></div>
+
+      <div class="composer__extras" id="extras"></div>
+
+      <div class="composer__bar">
+        <div class="tool-row">
+          <button type="button" class="tool" id="btn-add-media" title="Add images, GIF or video">
+            <input type="file" id="in-media" accept="image/*,video/*" multiple hidden></button>
+          <button type="button" class="tool" id="btn-add-poll" title="Add poll"></button>
+          <button type="button" class="tool" id="btn-add-quote" title="Quote a post"></button>
+          <button type="button" class="tool" id="btn-add-card" title="Fetch link preview"></button>
+        </div>
+        <div class="count-row">
+          <span class="counter" id="counter" aria-live="polite"></span>
+          <svg class="ring" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="ring__bg" cx="12" cy="12" r="10"></circle>
+            <circle class="ring__fg" id="ring-fg" cx="12" cy="12" r="10"></circle>
+          </svg>
+          <span class="divider"></span>
+          <button type="button" class="btn btn--round" id="btn-add-post" title="Add another post to the thread">+</button>
+          <button type="button" class="btn btn--round btn--danger" id="btn-del-post" title="Delete this post">−</button>
+        </div>
+      </div>
+
+      <div class="composer__foot">
+        <button type="button" class="btn btn--ghost" id="btn-autosplit">Auto-split into thread</button>
+        <button type="button" class="btn btn--ghost" id="btn-number">Number posts 1/n</button>
+      </div>
+    </div>
+
+    <details class="panel" id="panel-card">
+      <summary>Link preview</summary>
+      <div class="panel__body">
+        <label class="field"><span>URL</span>
+          <div class="row"><input type="url" id="in-card-url" placeholder="https://example.com/article">
+          <button type="button" class="btn" id="btn-fetch-card">Fetch</button></div></label>
+        <p class="hint" id="card-status"></p>
+        <label class="field"><span>Title</span><input type="text" id="in-card-title"></label>
+        <label class="field"><span>Description</span><input type="text" id="in-card-desc"></label>
+        <label class="field"><span>Image URL or upload</span>
+          <div class="row"><input type="text" id="in-card-image">
+          <input type="file" id="in-card-image-file" accept="image/*"></div></label>
+        <label class="field"><span>Domain</span><input type="text" id="in-card-domain"></label>
+        <button type="button" class="btn btn--ghost" id="btn-clear-card">Remove card</button>
+      </div>
+    </details>
+
+    <details class="panel" id="panel-quote">
+      <summary>Quoted post</summary>
+      <div class="panel__body grid2">
+        <label class="field"><span>Name</span><input type="text" id="in-q-name"></label>
+        <label class="field"><span>Handle</span><input type="text" id="in-q-handle"></label>
+        <label class="field field--wide"><span>Text</span><textarea id="in-q-text" rows="3"></textarea></label>
+        <label class="field"><span>Avatar</span><input type="file" id="in-q-avatar" accept="image/*"></label>
+        <label class="field"><span>Image</span><input type="file" id="in-q-image" accept="image/*"></label>
+        <label class="field"><span>Time</span><input type="text" id="in-q-time" placeholder="Aug 14"></label>
+        <label class="field field--check"><span>Verified</span><input type="checkbox" id="in-q-verified"></label>
+        <button type="button" class="btn btn--ghost" id="btn-clear-quote">Remove quote</button>
+      </div>
+    </details>
+
+    <details class="panel" id="panel-poll">
+      <summary>Poll</summary>
+      <div class="panel__body">
+        <div id="poll-options"></div>
+        <button type="button" class="btn btn--ghost" id="btn-poll-add">Add option</button>
+        <button type="button" class="btn btn--ghost" id="btn-clear-poll">Remove poll</button>
+      </div>
+    </details>
+
+  </section>
+
+  <!-- ── Right: live preview ──────────────────────────────────────── -->
+  <section class="pane pane--preview" aria-label="Preview">
+    <div class="preview-scroll">
+      <div class="x-surface" id="preview-root">
+        <div class="x-thread" id="preview-thread"></div>
+      </div>
+    </div>
+    <p class="hint hint--center">Live preview — matches X's web timeline at 598&nbsp;px.</p>
+  </section>
+
+</main>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>

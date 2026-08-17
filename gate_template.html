@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>X Drafter</title>
+<style id="gate-style">
+  :root {
+    --g-bg: #000000;
+    --g-card: #16181c;
+    --g-border: #2f3336;
+    --g-text: #e7e9ea;
+    --g-muted: #71767b;
+    --g-accent: #1d9bf0;
+    --g-danger: #f4212e;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    background: var(--g-bg);
+    background-image:
+      radial-gradient(1100px 600px at 50% -10%, rgba(29,155,240,.13), transparent 62%),
+      radial-gradient(900px 520px at 50% 115%, rgba(29,155,240,.07), transparent 65%);
+    color: var(--g-text);
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  #gate {
+    width: 100%;
+    max-width: 380px;
+  }
+  .gate-card {
+    background: var(--g-card);
+    border: 1px solid var(--g-border);
+    border-radius: 20px;
+    padding: 36px 28px 28px;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.03) inset;
+  }
+  .gate-card.shake { animation: gate-shake .38s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes gate-shake {
+    10%, 90% { transform: translateX(-2px); }
+    20%, 80% { transform: translateX(4px); }
+    30%, 50%, 70% { transform: translateX(-7px); }
+    40%, 60% { transform: translateX(7px); }
+  }
+  .gate-logo {
+    width: 34px;
+    height: 34px;
+    fill: var(--g-text);
+    display: block;
+    margin: 0 auto 18px;
+  }
+  h1 {
+    font-size: 23px;
+    line-height: 28px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin: 0 0 6px;
+  }
+  .gate-sub {
+    color: var(--g-muted);
+    font-size: 14px;
+    margin: 0 0 24px;
+  }
+  .gate-field { position: relative; }
+  input[type="password"] {
+    width: 100%;
+    background: #000;
+    border: 1px solid var(--g-border);
+    border-radius: 6px;
+    color: var(--g-text);
+    font-size: 16px;
+    padding: 14px 13px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type="password"]::placeholder { color: var(--g-muted); }
+  input[type="password"]:focus {
+    border-color: var(--g-accent);
+    box-shadow: 0 0 0 1px var(--g-accent);
+  }
+  input[type="password"]:disabled { opacity: .55; }
+  button {
+    width: 100%;
+    margin-top: 14px;
+    padding: 13px 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--g-text);
+    color: #0f1419;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition: opacity .15s ease;
+  }
+  button:hover:not(:disabled) { opacity: .88; }
+  button:disabled { opacity: .5; cursor: default; }
+  .spinner {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(15,20,25,.28);
+    border-top-color: #0f1419;
+    border-radius: 50%;
+    animation: gate-spin .7s linear infinite;
+    display: none;
+    flex: none;
+  }
+  button.busy .spinner { display: block; }
+  @keyframes gate-spin { to { transform: rotate(360deg); } }
+  .gate-error {
+    min-height: 18px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--g-danger);
+    opacity: 0;
+    transition: opacity .12s ease;
+  }
+  .gate-error.on { opacity: 1; }
+  .gate-foot {
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--g-muted);
+  }
+</style>
+</head>
+<body>
+<div id="gate">
+  <form class="gate-card" id="gate-form" autocomplete="on">
+    <svg class="gate-logo" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+    <h1>X Drafter</h1>
+    <p class="gate-sub">This page is encrypted. Enter the password to continue.</p>
+    <div class="gate-field">
+      <input id="gate-pw" type="password" autocomplete="current-password" name="password"
+             placeholder="Password" aria-label="Password" autofocus spellcheck="false">
+    </div>
+    <button type="submit" id="gate-btn"><span class="spinner"></span><span id="gate-btn-label">Unlock</span></button>
+    <div class="gate-error" id="gate-err" role="alert" aria-live="polite"></div>
+    <div class="gate-foot">Decrypted in your browser. Nothing is sent anywhere.</div>
+  </form>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SALT_B64   = "{{SALT_B64}}";
+  var IV_B64     = "{{IV_B64}}";
+  var CT_B64     = "{{CT_B64}}";
+  var ITERATIONS = {{ITERATIONS}};
+  var SS_KEY     = "xdrafter.pw";
+
+  var form  = document.getElementById("gate-form");
+  var input = document.getElementById("gate-pw");
+  var btn   = document.getElementById("gate-btn");
+  var label = document.getElementById("gate-btn-label");
+  var errEl = document.getElementById("gate-err");
+  var card  = form;
+
+  function b64ToBytes(b64) {
+    var bin = atob(b64), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.classList.add("on");
+    card.classList.remove("shake");
+    void card.offsetWidth;
+    card.classList.add("shake");
+  }
+
+  function clearError() {
+    errEl.classList.remove("on");
+  }
+
+  function busy(on, text) {
+    btn.disabled = on;
+    input.disabled = on;
+    btn.classList.toggle("busy", on);
+    label.textContent = text || (on ? "Unlocking…" : "Unlock");
+  }
+
+  // ---- crypto ------------------------------------------------------------
+
+  async function decryptPayload(password) {
+    var enc = new TextEncoder();
+    var baseKey = await crypto.subtle.importKey(
+      "raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]
+    );
+    var key = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: b64ToBytes(SALT_B64), iterations: ITERATIONS, hash: "SHA-256" },
+      baseKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["decrypt"]
+    );
+    var plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b64ToBytes(IV_B64) }, key, b64ToBytes(CT_B64)
+    );
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  // ---- module graph ------------------------------------------------------
+
+  // Matches: import x from "spec";  import "spec";  export * from "spec";
+  //          import("spec").
+  // The specifier charset excludes whitespace and punctuation that cannot occur
+  // in a module path, so a stray "… from " inside a string literal in minified
+  // vendor code doesn't produce a bogus match.
+  var IMPORT_RE = /(\bimport\s*\(\s*|\bfrom\s+|\bimport\s+)(["'])([^"'\n\s(){};,=+\\]+)\2/g;
+
+  function normalizePath(p) {
+    var parts = p.split("/"), out = [];
+    for (var i = 0; i < parts.length; i++) {
+      var seg = parts[i];
+      if (seg === "" || seg === ".") continue;
+      if (seg === ".." && out.length && out[out.length - 1] !== "..") out.pop();
+      else out.push(seg);
+    }
+    return out.join("/");
+  }
+
+  function dirOf(key) {
+    var i = key.lastIndexOf("/");
+    return i < 0 ? "" : key.slice(0, i);
+  }
+
+  // Resolve a relative specifier against an importer key. Returns null for
+  // bare (package) specifiers and absolute URLs, which we leave untouched.
+  function resolveSpec(importerKey, spec) {
+    if (spec.charAt(0) !== ".") return null;
+    var dir = dirOf(importerKey);
+    return normalizePath(dir ? dir + "/" + spec : spec);
+  }
+
+  function depsOf(modules, key) {
+    var out = [], seen = {}, m;
+    IMPORT_RE.lastIndex = 0;
+    while ((m = IMPORT_RE.exec(modules[key])) !== null) {
+      var target = resolveSpec(key, m[3]);
+      if (target && Object.prototype.hasOwnProperty.call(modules, target) && !seen[target]) {
+        seen[target] = 1;
+        out.push(target);
+      }
+    }
+    return out;
+  }
+
+  // Depth-first topological sort: dependencies get blob URLs before dependents.
+  function topoSort(modules, entry) {
+    var order = [], state = {};
+    var keys = Object.keys(modules).sort();
+    if (Object.prototype.hasOwnProperty.call(modules, entry)) {
+      keys = keys.filter(function (k) { return k !== entry; }).concat([entry]);
+    }
+    function visit(key) {
+      if (state[key] === 2) return;
+      if (state[key] === 1) {
+        console.warn("[x-drafter] import cycle at " + key + "; load order may be partial");
+        return;
+      }
+      state[key] = 1;
+      depsOf(modules, key).forEach(visit);
+      state[key] = 2;
+      order.push(key);
+    }
+    keys.forEach(visit);
+    return order;
+  }
+
+  function rewriteImports(modules, key, urls) {
+    return modules[key].replace(IMPORT_RE, function (whole, lead, quote, spec) {
+      var target = resolveSpec(key, spec);
+      if (target === null) return whole;                 // bare / absolute
+      if (!Object.prototype.hasOwnProperty.call(modules, target)) {
+        console.warn("[x-drafter] unresolved import " + spec + " in " + key);
+        return whole;
+      }
+      if (!urls[target]) {
+        console.warn("[x-drafter] " + key + " imports " + target + " before it was built (cycle)");
+        return whole;
+      }
+      return lead + quote + urls[target] + quote;
+    });
+  }
+
+  // ---- boot --------------------------------------------------------------
+
+  function applyAttrs(el, attrs) {
+    if (!attrs) return;
+    Object.keys(attrs).forEach(function (name) {
+      try { el.setAttribute(name, attrs[name]); } catch (e) { /* ignore bad names */ }
+    });
+  }
+
+  async function boot(payload) {
+    // 1. styles
+    var gs = document.getElementById("gate-style");
+    if (gs) gs.remove();
+    var style = document.createElement("style");
+    style.textContent = payload.css || "";
+    document.head.appendChild(style);
+
+    if (payload.title) document.title = payload.title;
+    applyAttrs(document.documentElement, payload.htmlAttrs);
+
+    // 2. markup
+    document.body.removeAttribute("style");
+    document.body.className = "";
+    applyAttrs(document.body, payload.bodyAttrs);
+    document.body.innerHTML = payload.html || "";
+
+    // 3. modules as blob URLs, dependencies first, specifiers rewritten
+    var modules = payload.js || {};
+    var entry = payload.entry;
+    var urls = {};
+    topoSort(modules, entry).forEach(function (key) {
+      var src = rewriteImports(modules, key, urls);
+      urls[key] = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    });
+
+    if (!urls[entry]) throw new Error("entry module missing: " + entry);
+
+    // 4. run
+    await import(urls[entry]);
+  }
+
+  // ---- unlock flow -------------------------------------------------------
+
+  var running = false;
+
+  async function unlock(password, opts) {
+    opts = opts || {};
+    if (running || !password) return false;
+    running = true;
+    clearError();
+    busy(true);
+    // Let the browser paint the spinner before the ~1s key derivation blocks.
+    await new Promise(function (r) { requestAnimationFrame(function () { setTimeout(r, 0); }); });
+
+    var payload;
+    try {
+      payload = await decryptPayload(password);
+    } catch (e) {
+      running = false;
+      busy(false);
+      try { sessionStorage.removeItem(SS_KEY); } catch (e2) {}
+      if (!opts.silent) showError("Wrong password.");
+      input.value = "";
+      input.focus();
+      return false;
+    }
+
+    try { sessionStorage.setItem(SS_KEY, password); } catch (e) {}
+    label.textContent = "Loading…";
+
+    try {
+      await boot(payload);
+    } catch (e) {
+      console.error(e);
+      running = false;
+      busy(false);
+      showError("Decrypted, but the app failed to start: " + (e && e.message ? e.message : e));
+      return false;
+    }
+    return true;
+  }
+
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    unlock(input.value, {});
+  });
+  input.addEventListener("input", clearError);
+
+  // crypto.subtle only exists in secure contexts (https:, localhost, file: is out).
+  if (!window.crypto || !crypto.subtle) {
+    busy(true, "Unavailable");
+    showError("This page needs a secure context (https:// or localhost) to decrypt.");
+    return;
+  }
+
+  // #pw=... convenience: use it once, then scrub it from the address bar.
+  var fragPw = null;
+  if (location.hash) {
+    var m = /(?:^#|&)pw=([^&]*)/.exec(location.hash);
+    if (m) {
+      try { fragPw = decodeURIComponent(m[1]); } catch (e) { fragPw = m[1]; }
+      var cleanHash = location.hash.replace(/(?:^#|&)pw=[^&]*/, "").replace(/^&/, "#");
+      history.replaceState(null, "", location.pathname + location.search + (cleanHash === "#" ? "" : cleanHash));
+    }
+  }
+
+  var stored = null;
+  try { stored = sessionStorage.getItem(SS_KEY); } catch (e) {}
+
+  if (fragPw) {
+    unlock(fragPw, {});
+  } else if (stored) {
+    unlock(stored, { silent: true }).then(function (ok) { if (!ok) input.focus(); });
+  } else {
+    input.focus();
+  }
+})();
+</script>
+</body>
+</html>

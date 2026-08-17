@@ -1,0 +1,747 @@
+/* ===========================================================================
+   x.css — X (Twitter) post-card design system
+   Owns: the preview surface only (.x-surface, .x-thread, .x-post and children).
+   App chrome (composer, toolbar, panels) lives in app.css — nothing here
+   touches it.
+
+   Colour tokens are declared with bare [data-theme="…"] selectors so they
+   resolve whether the attribute sits on <html> or on #preview-root; the
+   nearest ancestor carrying the attribute wins by inheritance.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. Theme tokens
+   :root carries the Light palette as the no-attribute default. Each
+   [data-theme] block below only redefines what changes.
+   --------------------------------------------------------------------------- */
+
+:root,
+[data-theme="light"] {
+  --x-bg:              #ffffff;
+  --x-bg-elev:         #f7f9f9;   /* image placeholders, pressed rows */
+  --x-text:            #0f1419;
+  --x-text-secondary:  #536471;   /* @handle, timestamps, counts, descriptions */
+  --x-border:          #eff3f4;
+  --x-hover-overlay:   rgba(0, 0, 0, 0.03);
+  --x-scrim:           rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dim"] {
+  --x-bg:              #15202b;
+  --x-bg-elev:         #1e2732;
+  --x-text:            #f7f9f9;
+  --x-text-secondary:  #8b98a5;
+  --x-border:          #38444d;
+  --x-hover-overlay:   rgba(255, 255, 255, 0.03);
+  --x-scrim:           rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="lightsout"] {
+  --x-bg:              #000000;
+  --x-bg-elev:         #16181c;
+  --x-text:            #e7e9ea;
+  --x-text-secondary:  #71767b;
+  --x-border:          #2f3336;
+  --x-hover-overlay:   rgba(255, 255, 255, 0.03);
+  --x-scrim:           rgba(0, 0, 0, 0.6);
+}
+
+/* Theme-independent tokens. Repeated on every theme selector so a nested
+   [data-theme] on #preview-root inherits a complete set. */
+:root,
+[data-theme="light"],
+[data-theme="dim"],
+[data-theme="lightsout"] {
+  --x-accent:        #1d9bf0;
+  --x-accent-hover:  #1a8cd8;
+  --x-like:          #f91880;
+  --x-repost:        #00ba7c;
+  --x-badge-blue:    #1d9bf0;
+  --x-badge-gold:    #ffd400;
+  --x-badge-grey:    #829aab;
+
+  /* 10 %-opacity tints behind action-bar hover pills */
+  --x-tint-accent:   rgba(29, 155, 240, 0.10);
+  --x-tint-like:     rgba(249, 24, 128, 0.10);
+  --x-tint-repost:   rgba(0, 186, 124, 0.10);
+
+  --x-media-radius:  16px;
+  --x-avatar:        40px;
+  --x-font: "TwitterChirp", "Chirp", -apple-system, BlinkMacSystemFont,
+            "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Surface + thread
+   598px is X's timeline column width. Everything inside is built for that
+   width but degrades cleanly to ~360px.
+   --------------------------------------------------------------------------- */
+
+/* Scoped border-box reset so the card's fixed sizes (poll rows, avatars,
+   thumbnails) hold regardless of what app.css does or doesn't set. */
+.x-surface,
+.x-surface *,
+.x-post,
+.x-post * { box-sizing: border-box; }
+
+.x-surface {
+  width: 598px;
+  max-width: 100%;
+  background: var(--x-bg);
+  color: var(--x-text);
+  border: 1px solid var(--x-border);
+  border-radius: 16px;
+  overflow: hidden;
+  font-family: var(--x-font);
+  font-size: 15px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.x-thread {
+  display: flow-root;
+}
+
+/* Last post in a thread never draws a divider. */
+.x-thread > .x-post:last-child {
+  border-bottom: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   3. Post shell + gutter (avatar and thread connector)
+   --------------------------------------------------------------------------- */
+
+.x-post {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--x-border);
+  background: var(--x-bg);
+  color: var(--x-text);
+  font-family: var(--x-font);
+  position: relative;
+}
+
+/* Connected posts run continuously — X drops the divider between them. */
+.x-post[data-connector="bottom"],
+.x-post[data-connector="both"] {
+  border-bottom: 0;
+}
+
+.x-post__gutter {
+  position: relative;
+  flex: none;
+  width: var(--x-avatar);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.x-avatar {
+  width: var(--x-avatar);
+  height: var(--x-avatar);
+  flex: none;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: var(--x-bg-elev);
+  display: block;
+}
+
+/* Thread connector: hidden by default, revealed per data-connector value.
+   Negative offsets let the line bleed into the post's own 12px padding so
+   consecutive posts join seamlessly. */
+.x-line {
+  display: none;
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--x-border);
+}
+
+.x-line--top {
+  top: -12px;
+  height: 12px;
+}
+
+.x-line--bottom {
+  top: calc(var(--x-avatar) + 4px);
+  bottom: -12px;
+}
+
+[data-connector="top"]  .x-line--top,
+[data-connector="both"] .x-line--top    { display: block; }
+[data-connector="bottom"] .x-line--bottom,
+[data-connector="both"]   .x-line--bottom { display: block; }
+
+.x-post__body {
+  flex: 1 1 auto;
+  min-width: 0;   /* lets the head row and long URLs actually truncate/wrap */
+}
+
+/* ---------------------------------------------------------------------------
+   4. Head row — name · badge · @handle · dot · time · more
+   Single line. Name truncates first, then handle; dot/time never shrink.
+   --------------------------------------------------------------------------- */
+
+.x-post__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  line-height: 20px;
+}
+
+.x-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--x-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.x-handle,
+.x-time {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--x-text-secondary);
+  white-space: nowrap;
+}
+
+.x-handle {
+  flex: 0 3 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.x-dot {
+  flex: none;
+  color: var(--x-text-secondary);
+  font-size: 15px;
+}
+
+.x-time { flex: none; }
+
+.x-more {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--x-text-secondary);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.x-more svg { width: 18.75px; height: 18.75px; fill: currentColor; }
+
+.x-more:hover {
+  color: var(--x-accent);
+  background: var(--x-tint-accent);
+}
+
+/* Verified badges. Colour comes from the variant; icons.js supplies the shape
+   (the gold organisation badge has its own squarish path). */
+.x-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.x-badge svg { width: 100%; height: 100%; fill: currentColor; }
+
+.x-badge--blue { color: var(--x-badge-blue); }
+.x-badge--gold { color: var(--x-badge-gold); }
+.x-badge--grey { color: var(--x-badge-grey); }
+
+/* Gold badges render as a rounded square in X; clip in case the SVG path
+   supplied is the round one. */
+.x-badge--gold svg { border-radius: 4px; }
+
+/* ---------------------------------------------------------------------------
+   5. Post text
+   --------------------------------------------------------------------------- */
+
+.x-text {
+  margin-top: 2px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--x-text);
+  white-space: pre-wrap;        /* preserve author line breaks */
+  overflow-wrap: anywhere;      /* break very long URLs instead of overflowing */
+  word-break: break-word;
+}
+
+.x-text:empty { display: none; }
+
+.x-link {
+  color: var(--x-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.x-link:hover { text-decoration: underline; }
+
+/* ---------------------------------------------------------------------------
+   6. Media grid
+   The container clips to 16px with overflow:hidden, which produces exactly
+   X's "outer corners only" rounding for every 1–4 layout without per-item
+   corner maths. Multi-image grids are always 16:9 overall, matching X.
+   --------------------------------------------------------------------------- */
+
+.x-media {
+  margin-top: 12px;
+  display: grid;
+  gap: 2px;
+  border-radius: var(--x-media-radius);
+  overflow: hidden;
+  background: var(--x-bg);   /* shows through the 2px gutters, as on X */
+}
+
+.x-media__item {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--x-bg-elev);
+}
+
+.x-media__item img,
+.x-media__item video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 1 image — natural aspect ratio, capped at 510px tall (then cropped).
+   media.js may set --x-ar on the item to pin an exact ratio. */
+.x-media--1 { grid-template-columns: 1fr; }
+
+.x-media--1 .x-media__item {
+  aspect-ratio: var(--x-ar, auto);
+  max-height: 510px;
+}
+
+.x-media--1 .x-media__item img,
+.x-media--1 .x-media__item video {
+  height: auto;
+  max-height: 510px;
+}
+
+/* 2 images — equal columns, each pane taller than wide. */
+.x-media--2 {
+  grid-template-columns: 1fr 1fr;
+  aspect-ratio: 16 / 9;
+}
+
+/* 3 images — one tall image on the left, two stacked on the right. */
+.x-media--3 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  aspect-ratio: 16 / 9;
+}
+
+.x-media--3 .x-media__item:first-child { grid-row: span 2; }
+
+/* 4 images — even 2x2. */
+.x-media--4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  aspect-ratio: 16 / 9;
+}
+
+/* Video play affordance — centred dark scrim disc over the poster frame.
+   Sits above the image but below the ALT badge, and never eats a click. */
+.x-media__play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--x-scrim);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  pointer-events: none;
+}
+
+.x-media__play svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  display: block;
+}
+
+/* ALT badge, bottom-left of its pane. */
+.x-alt {
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  bottom: 8px;
+  padding: 0 4px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--x-scrim);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 12px;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   7. Link preview card
+   --------------------------------------------------------------------------- */
+
+.x-card {
+  margin-top: 12px;
+  display: block;
+  border: 1px solid var(--x-border);
+  border-radius: var(--x-media-radius);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  background: var(--x-bg);
+  transition: background-color 0.2s;
+}
+
+.x-card:hover { background: var(--x-hover-overlay); }
+
+.x-card__img {
+  background: var(--x-bg-elev);
+  overflow: hidden;
+}
+
+.x-card__img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.x-card__meta {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.x-card__domain {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--x-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.x-card__title {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--x-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.x-card__desc {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--x-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Large variant — 1.91:1 hero image above the meta block. */
+.x-card--large .x-card__img { aspect-ratio: 1.91 / 1; }
+
+/* Small variant — 128px square thumbnail, meta to the right. */
+.x-card--small {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.x-card--small .x-card__img {
+  flex: none;
+  width: 128px;
+  aspect-ratio: 1 / 1;
+  border-right: 1px solid var(--x-border);
+}
+
+.x-card--small .x-card__meta {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.x-card--small .x-card__desc { -webkit-line-clamp: 1; line-clamp: 1; }
+
+/* ---------------------------------------------------------------------------
+   8. Poll
+   --------------------------------------------------------------------------- */
+
+.x-poll {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.x-poll__opt {
+  flex: none;                /* never stretch or shrink off the 32px */
+  box-sizing: border-box;    /* 32px includes the 1px border, as on X */
+  height: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--x-accent);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.x-poll__opt:hover { background: var(--x-tint-accent); }
+
+.x-poll__label {
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--x-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.x-poll__foot {
+  margin-top: -4px;              /* pulls the foot to ~8px under the last row */
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--x-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   9. Quoted post
+   --------------------------------------------------------------------------- */
+
+.x-quote {
+  margin: 12px 0 0;
+  padding: 12px;
+  border: 1px solid var(--x-border);
+  border-radius: var(--x-media-radius);
+  background: var(--x-bg);
+  transition: background-color 0.2s;
+}
+
+.x-quote:hover { background: var(--x-hover-overlay); }
+
+.x-quote__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  line-height: 20px;
+}
+
+.x-quote__avatar {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: var(--x-bg-elev);
+  margin-right: 2px;
+}
+
+.x-quote__head .x-badge { width: 16px; height: 16px; }
+
+.x-quote__text {
+  margin-top: 2px;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--x-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.x-quote__media {
+  margin-top: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--x-bg-elev);
+  max-height: 280px;
+}
+
+.x-quote__media img,
+.x-quote__media video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+  object-fit: cover;
+}
+
+/* ---------------------------------------------------------------------------
+   10. Action bar
+   Space-between across a 425px track. Each button owns a --x-act (hover
+   colour) and --x-act-tint (hover pill fill) pair; the pill is a ::before
+   circle centred behind the 18.75px icon.
+   --------------------------------------------------------------------------- */
+
+.x-actions {
+  margin-top: 12px;
+  max-width: 425px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.x-action {
+  --x-act: var(--x-text-secondary);
+  --x-act-tint: transparent;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  color: var(--x-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.x-action__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18.75px;
+  height: 18.75px;
+  flex: none;
+}
+
+/* the hover pill */
+.x-action__icon::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: transparent;
+  transition: background-color 0.2s;
+}
+
+.x-action__icon svg {
+  position: relative;
+  width: 18.75px;
+  height: 18.75px;
+  fill: currentColor;
+}
+
+.x-action__count {
+  font-size: 13px;
+  line-height: 16px;
+  color: inherit;
+  transition: color 0.2s;
+}
+
+.x-action:hover { color: var(--x-act); }
+.x-action:hover .x-action__icon::before { background: var(--x-act-tint); }
+
+.x-action:focus-visible {
+  outline: 2px solid var(--x-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* per-action hover colours */
+.x-action--reply,
+.x-action--views,
+.x-action--bookmark,
+.x-action--share {
+  --x-act: var(--x-accent);
+  --x-act-tint: var(--x-tint-accent);
+}
+
+.x-action--repost {
+  --x-act: var(--x-repost);
+  --x-act-tint: var(--x-tint-repost);
+}
+
+.x-action--like {
+  --x-act: var(--x-like);
+  --x-act-tint: var(--x-tint-like);
+}
+
+/* bookmark + share sit together at the right end */
+.x-actions__end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   11. Responsive — hold the 598px look, then compress toward ~360px
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 620px) {
+  .x-surface { width: 100%; }
+}
+
+@media (max-width: 420px) {
+  .x-post { padding: 12px; gap: 8px; }
+  .x-actions { max-width: none; }
+  .x-card--small .x-card__img { width: 96px; }
+  .x-media--1 .x-media__item,
+  .x-media--1 .x-media__item img { max-height: 360px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .x-action,
+  .x-action__icon::before,
+  .x-action__count,
+  .x-card,
+  .x-quote,
+  .x-poll__opt,
+  .x-more { transition: none; }
+}
