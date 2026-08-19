@@ -78,6 +78,9 @@ Worth knowing before you lean on formatting, because the tool deliberately goes 
 
 ## Link previews
 
+**One card per post.** X's [Cards documentation](https://developer.x.com/en/docs/x-for-websites/cards/guides/getting-started) states that "only one card may be shown in a Tweet" and that "images or media attached to Tweets will have precedence over any card attached to a URL". The preview follows that: attach media, a quoted post or a poll and the link card is suppressed, leaving the URL as plain link text in the body. Media and a quoted post can appear together — it's only the card that loses.
+
+
 A static page has no server to fetch Open Graph tags with, so the card fetch goes through public CORS proxies (`allorigins`, `corsproxy.io`, `r.jina.ai`) in order, with a 6-second timeout each. **Those proxies see the URL you're previewing.** If they all fail, the card degrades to manual entry — title, description, image and domain fields — and nothing is lost. If you'd rather no third party saw the URLs, skip the Fetch button and fill the fields in yourself.
 
 ## Fidelity notes

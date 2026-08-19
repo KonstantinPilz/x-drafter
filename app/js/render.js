@@ -389,10 +389,12 @@ export function postCardHTML(post, state, opts) {
   const options = opts || {};
   const connector = options.connector || 'none';
 
-  // Media outranks the link card: X suppresses the card entirely when a post
-  // carries images or video, so only one of the two is ever rendered.
+  // X shows at most one card per post: "Images or media attached to Tweets will
+  // have precedence over any card attached to a URL" (developer.x.com, Cards).
+  // A quoted post and a poll occupy that same slot, so each of the three
+  // suppresses the link card. Media and a quote can coexist — only the card loses.
   const hasMedia = Boolean(p.media && p.media.length);
-  const card = hasMedia ? null : p.card;
+  const card = (hasMedia || p.quote || p.poll) ? null : p.card;
 
   // Strip the URL that produced an attachment, so the body doesn't show both
   // the blue link and the card/quote it generated. Only done when that
