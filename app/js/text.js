@@ -1071,6 +1071,13 @@ function pack(text, budget) {
   // the chunk and re-opened at the start of the next one, so neither half is
   // left holding a stray `**`. Markers weigh nothing, so the repair cannot
   // push a chunk over budget.
+  //
+  // The repair assumes each chunk parses the way that region parsed inside the
+  // whole post. Marker soup can break that assumption — a text where loose
+  // asterisks only paired up because of context that ended up in another chunk
+  // — and then a stray marker can survive. Every cut that would visibly rewrite
+  // the author's text is skipped instead (see `fuses`), and prose with ordinary
+  // formatting in it is unaffected.
   const hardCut = (piece) => {
     flush();
     const f = formatting(piece);
@@ -1093,6 +1100,30 @@ function pack(text, budget) {
     idxOf.set(piece.length, gs.length);
     const offAt = (i) => (i < gs.length ? offs[i] : piece.length);
 
+    /** Spans that a cut at source offset `p` would break in two. */
+    const openAt = (p) => {
+      const open = [];
+      for (const sp of spans) if (sp.openEnd <= p && p <= sp.closeStart) open.push(sp);
+      return open;
+    };
+
+    /**
+     * Would the markers we are about to insert merge with a marker character
+     * already sitting next to the cut? `...2 *` plus a `*` closer becomes `**`,
+     * which reads as a different (and unmatched) run, so the literal asterisk
+     * the author typed would come back as two. Cut somewhere else instead.
+     */
+    const fuses = (p, open) => {
+      if (!open.length) return false;
+      const inner = open[open.length - 1].marker.charAt(0);
+      let q = p;
+      while (q > 0 && isSpacey(piece.charAt(q - 1))) q--;
+      if (q > 0 && piece.charAt(q - 1) === inner) return true;
+      let r = p;
+      while (r < piece.length && isSpacey(piece.charAt(r))) r++;
+      return r < piece.length && piece.charAt(r) === inner;
+    };
+
     // Never leave a chunk ending on a dangling opener or starting on a dangling
     // closer — both would render as literal asterisks. Shift the cut instead.
     const adjust = (i, floor) => {
@@ -1110,6 +1141,8 @@ function pack(text, budget) {
         for (const sp of spans) {
           if (sp.closeStart === p && sp.openEnd <= p) { ci--; moved = true; break; }
         }
+        if (moved) continue;
+        if (fuses(p, openAt(p))) { ci--; moved = true; }
         if (!moved) break;
       }
       return ci > floor ? ci : i;
@@ -1139,10 +1172,13 @@ function pack(text, budget) {
       const b = bounds[bi];
       let body = piece.slice(offAt(prev), offAt(b));
       if (pend) body = insertAfterLeadingSpace(body, pend);
-      const open = [];
+      let open = [];
       if (b < gs.length) {
         const p = offAt(b);
-        for (const sp of spans) if (sp.openEnd <= p && p <= sp.closeStart) open.push(sp);
+        open = openAt(p);
+        // No safe cut was available: splitting here would rewrite the author's
+        // text, so leave the markers exactly as they are and take the stray.
+        if (fuses(p, open)) open = [];
         let closers = '';
         for (let k = open.length - 1; k >= 0; k--) closers += open[k].marker;
         body = insertBeforeTrailingSpace(body, closers);
