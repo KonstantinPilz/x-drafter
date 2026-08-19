@@ -297,11 +297,64 @@
 
 .x-link:hover { text-decoration: underline; }
 
+/* Rich text (X Premium lets subscribers bold, italicise and strike a post).
+   render.js emits real <b>, <i> and <s> inside the text block, in either
+   nesting order with the .x-link entity spans. Every rule below inherits the
+   type size and line-height, so a formatted run keeps the same 20px line box
+   as plain text — the clamp further down counts on that. */
+.x-text b,
+.x-text i,
+.x-text s,
+.x-quote__text b,
+.x-quote__text i,
+.x-quote__text s {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+
+/* 700 is the weight X's Chirp stack gives the display name, and the heaviest
+   thing on the card — bold body text matches it and never exceeds it. */
+.x-text b,
+.x-quote__text b { font-weight: 700; }
+
+.x-text i,
+.x-quote__text i { font-style: italic; }
+
+/* The line takes the element's own text colour, so a struck run drawn inside
+   an accent-coloured link is struck in accent, not in --x-text. */
+.x-text s,
+.x-quote__text s {
+  text-decoration: line-through;
+  -webkit-text-decoration-color: currentColor;
+  text-decoration-color: currentColor;
+}
+
+/* Formatting composes with the entity spans in either direction: .x-link
+   carries the colour, b/i/s carry weight and style, and neither resets the
+   other. Spelled out so a later change to .x-link can't quietly un-bold a
+   bolded @mention. The hover underline survives untouched — it is set on
+   .x-link itself, and an ancestor <s>'s line-through propagates down to the
+   link regardless of .x-link's own text-decoration, so a struck link shows
+   both lines on hover. */
+.x-text b .x-link,
+.x-text .x-link b,
+.x-quote__text b .x-link,
+.x-quote__text .x-link b { font-weight: 700; }
+
+.x-text i .x-link,
+.x-text .x-link i,
+.x-quote__text i .x-link,
+.x-quote__text .x-link i { font-style: italic; }
+
 /* Long-post truncation (X Premium posts over 280 characters). render.js adds
    .x-text--clamped and emits .x-showmore as the next sibling, then drops the
    class again when the reader expands. Both the line clamp and the height cap
    live only on the modifier, so removing it restores plain pre-wrap block flow
-   with no leftover display or max-height. */
+   with no leftover display or max-height. Bold/italic/struck runs inside a
+   clamped post set no font-size or line-height of their own, so every line
+   stays 20px and the clamp and its max-height fallback still cut together. */
 .x-text--clamped {
   display: -webkit-box;
   -webkit-line-clamp: 10;

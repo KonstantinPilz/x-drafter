@@ -18,12 +18,17 @@
     <span>Drafter</span>
   </div>
   <div class="app-bar__actions">
+    <div class="seg" id="view-switch" role="group" aria-label="Preview context">
+      <button type="button" data-view-value="detail" title="Post detail — where X actually shows bold and italic">Detail</button>
+      <button type="button" data-view-value="timeline" title="Main timeline — X strips bold and italic here">Timeline</button>
+    </div>
     <div class="seg" id="theme-switch" role="group" aria-label="Theme">
       <button type="button" data-theme-value="light">Light</button>
       <button type="button" data-theme-value="dim">Dim</button>
       <button type="button" data-theme-value="lightsout">Lights out</button>
     </div>
     <button type="button" class="btn" id="btn-copy-text">Copy text</button>
+    <button type="button" class="btn" id="btn-copy-styled" title="Copies rich text, with Unicode-styled characters as the plain-text fallback">Copy styled</button>
     <button type="button" class="btn" id="btn-copy-png">Copy image</button>
     <button type="button" class="btn btn--primary" id="btn-export-png">Download PNG</button>
     <button type="button" class="btn btn--ghost" id="btn-reset" title="Clear the draft">Reset</button>
@@ -95,6 +100,10 @@
           <button type="button" class="tool" id="btn-add-poll" title="Add poll"></button>
           <button type="button" class="tool" id="btn-add-quote" title="Quote a post"></button>
           <button type="button" class="tool" id="btn-add-card" title="Fetch link preview"></button>
+          <span class="tool-sep"></span>
+          <button type="button" class="tool tool--fmt" id="btn-fmt-bold" title="Bold (Ctrl/Cmd+B)"><b>B</b></button>
+          <button type="button" class="tool tool--fmt" id="btn-fmt-italic" title="Italic (Ctrl/Cmd+I)"><i>I</i></button>
+          <button type="button" class="tool tool--fmt" id="btn-fmt-strike" title="Strikethrough (Ctrl/Cmd+Shift+X) — Articles only; X posts don't render it"><s>S</s></button>
         </div>
         <div class="count-row">
           <span class="counter" id="counter" aria-live="polite"></span>
@@ -107,6 +116,8 @@
           <button type="button" class="btn btn--round btn--danger" id="btn-del-post" title="Delete this post">−</button>
         </div>
       </div>
+
+      <p class="fmt-hint">Formatting: <code>**bold**</code> and <code>*italic*</code> are what X supports on posts; <code>~~strike~~</code> only works in Articles. Markers don't count toward the limit. X shows styling on post detail only — switch the preview to Timeline to see what most followers get.</p>
 
       <div class="composer__foot">
         <button type="button" class="btn btn--ghost" id="btn-autosplit">Auto-split into thread</button>

@@ -20,6 +20,9 @@ import { icon } from './icons.js';
 // load it lazily, fall back to a local escape+linebreak renderer until (or
 // unless) it arrives, and re-render once it does.
 let renderTextHTML = null;
+let stripFormatting = null;
+// X suppresses bold/italic in the main timeline; it only shows on post detail.
+let viewMode = 'detail';
 let weightedLength = null;
 let maxWeighted = null;
 let lastRoot = null;
@@ -31,6 +34,10 @@ import('./text.js')
     let upgraded = false;
     if (typeof mod.renderTextHTML === 'function') {
       renderTextHTML = mod.renderTextHTML;
+      upgraded = true;
+    }
+    if (typeof mod.stripFormatting === 'function') {
+      stripFormatting = mod.stripFormatting;
       upgraded = true;
     }
     // Long-post clamping needs both the counter and the limit; without them we
@@ -67,6 +74,10 @@ function fallbackTextHTML(text) {
 /** Body text as HTML — delegated to text.js when it is available. */
 function textHTML(text) {
   if (!text) return '';
+  // Timeline view: X strips the styling, so the preview must too.
+  if (viewMode === 'timeline' && stripFormatting) {
+    try { text = stripFormatting(text); } catch (e) { /* leave the markers in */ }
+  }
   if (renderTextHTML) {
     try {
       const html = renderTextHTML(text);
@@ -496,6 +507,7 @@ export function renderPreview(state, root) {
   if (!root) return;
   lastRoot = root;
   lastState = state;
+  viewMode = (state && state.viewMode) === 'timeline' ? 'timeline' : 'detail';
   wirePreview(root);
 
   const posts = (state && Array.isArray(state.posts) && state.posts.length)

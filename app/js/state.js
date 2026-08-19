@@ -22,6 +22,7 @@ const defaults = () => ({
   theme: 'dim',
   showMetrics: true,
   premiumLong: true,          // Premium's 25,000-character limit rather than 280
+  viewMode: 'detail',         // 'timeline' hides bold/italic, the way X does
   timeLabel: '2h',
   metrics: { replies: 6, reposts: 14, likes: 118, views: '9,842', bookmarks: 7 },
   activeId: null,

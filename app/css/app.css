@@ -810,12 +810,70 @@ input[type="file"]:focus-visible { outline: 2px solid var(--app-accent); outline
   background: transparent;
   color: var(--app-accent);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease,
+              box-shadow 0.15s ease;
 }
 .tool:hover { background: var(--app-accent-soft); }
 .tool:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 1px; }
 .tool:disabled { opacity: 0.5; pointer-events: none; }
 .tool svg { width: 19px; height: 19px; fill: currentColor; }
+
+/* Formatting tools (bold / italic / strike) carry a letterform instead of an
+   SVG, so they need the type rules .tool only supplies to its icons. */
+.tool--fmt {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* .tool's grid centres the glyph's box, but B / I / S have no descender, which
+   leaves the ink reading about a pixel high in the 34px circle — nudge it back
+   down. The italic also leans right, so pull it half a pixel left. The glyph
+   ignores the pointer so clicks and event.target always land on the button. */
+.tool--fmt > b,
+.tool--fmt > i,
+.tool--fmt > s {
+  display: block;
+  font-size: inherit;
+  line-height: 1;
+  transform: translateY(1px);
+  pointer-events: none;
+}
+.tool--fmt > i { transform: translate(-0.5px, 1px); }
+.tool--fmt > s { text-decoration-thickness: 1px; }
+
+/* Caret sits inside formatted text. Same accent tint as :hover plus an accent
+   ring, so an active tool still reads as active under the pointer. */
+.tool.is-active {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+  box-shadow: inset 0 0 0 1px var(--app-accent-ring);
+}
+.tool.is-active:hover { box-shadow: inset 0 0 0 1px var(--app-accent); }
+
+/* Syntax reminder under the composer bar. Spaced with padding rather than
+   margin so it sits right as the composer's last child or as a sibling
+   below the card. */
+.fmt-hint {
+  margin: 0;
+  padding: 6px 12px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-text-dim);
+}
+.fmt-hint:empty { display: none; }
+
+.fmt-hint code {
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: var(--app-surface-2);
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+               "Liberation Mono", monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
 
 .count-row {
   display: flex;

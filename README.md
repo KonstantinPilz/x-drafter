@@ -14,6 +14,8 @@ Everything runs in the browser. There is no server and no account: drafts live i
 - **Threads**: numbered tabs per post, connector lines in the preview, `Auto-split into thread` for long text (splits on sentence boundaries, never mid-word or mid-URL), and `Number posts 1/n`.
 - **Quote posts and polls**, rendered the way X renders them.
 - **X's real character counting** — URLs always count 23, CJK and emoji count 2, emoji ZWJ sequences count as one grapheme. The ring and counter go amber at 20 left and red past the limit.
+- **Formatting**: `**bold**` and `*italic*` (or `_italic_`) render as real bold and italic, with toolbar buttons and `Ctrl/Cmd+B` / `Ctrl/Cmd+I`. `~~strikethrough~~` is there too, but see the caveat below. Markers cost no characters, matching how X stores formatting separately from the text.
+- **Detail vs Timeline preview**: X [suppressed rich text in the main timeline](https://x.com/elonmusk/status/1840976842473263185) in October 2024 — bold and italic only show when someone opens the post. The Detail/Timeline switch in the toolbar shows you both, so you can see what most followers actually get.
 - **Premium long posts**: past 280 characters the preview collapses to ten lines with a blue "Show more" that expands in place, the way X shows long posts in the timeline. The limit becomes 25,000. Switch it off in the Profile panel to draft against the plain 280 limit instead.
 - **Saved drafts** — name them, reload them, rename, duplicate, delete, and export/import the whole set as JSON.
 - **Export**: download the preview as a 2× PNG, copy it to the clipboard, or copy the thread as plain text.
@@ -64,6 +66,15 @@ The build inlines the CSS, the ES modules and the vendored library into one JSON
 | `app/css/app.css` | App chrome |
 | `build.py`, `gate_template.html` | Encrypted single-file build |
 | `CONTRACT.md` | Module contract and the canonical post markup |
+
+## What X actually supports
+
+Worth knowing before you lean on formatting, because the tool deliberately goes one step past X in one place:
+
+- **Posts support bold and italic only.** X's [Premium help page](https://help.x.com/en/using-x/x-premium-how-to) describes longer posts with "rich text (bold and italics)", and the [announcement](https://x.com/premium/status/1840854656668619215) (September 2024) says the same. **Strikethrough is not available on ordinary posts** — it belongs to [Articles](https://help.x.com/en/using-x/articles), along with headings, lists and indentation. The `~~strike~~` marker is supported here for drafting Articles; a post using it won't render struck on X.
+- **Bold and italic show on post detail, not in the timeline.** Suppressed platform-wide in October 2024 after the styling was abused. Use the Timeline view to sanity-check how a post reads without it.
+- **Two things we could not confirm from sources** and are stating as assumptions: (a) that native rich text costs no characters — the tool assumes it doesn't, which is consistent with formatting being range metadata, but no X documentation says so; (b) whether formatting works on posts under 280 characters at all — the help page frames it as a long-post feature while the announcement doesn't. Both are worth a two-minute check in X's own composer.
+- **X strips formatting from pasted rich text** (secondary sources only, ~70% confidence). So `Copy styled` puts real HTML on the clipboard for editors that accept it, and Unicode mathematical-alphanumeric characters as the plain-text fallback. Be careful with that fallback on X itself: those glyphs are different characters, so they **count double**, break search indexing, and read badly in screen readers. For X, the honest workflow is `Copy text` and then apply bold in X's own composer.
 
 ## Link previews
 

@@ -28,9 +28,15 @@ function applyTheme() {
   document.querySelectorAll('#theme-switch button').forEach((b) => {
     b.setAttribute('aria-pressed', String(b.dataset.themeValue === state.theme));
   });
+  document.querySelectorAll('#view-switch button').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.viewValue === (state.viewMode || 'detail')));
+  });
 }
 document.querySelectorAll('#theme-switch button').forEach((b) => {
   on(b, 'click', () => update((s) => { s.theme = b.dataset.themeValue; }));
+});
+document.querySelectorAll('#view-switch button').forEach((b) => {
+  on(b, 'click', () => update((s) => { s.viewMode = b.dataset.viewValue; }));
 });
 
 /* ── profile fields ────────────────────────────────────────────────── */
@@ -308,9 +314,35 @@ function syncCardInputs() {
 const previewNode = () => $('#preview-root');
 
 on($('#btn-copy-text'), 'click', async () => {
-  const text = guard('exportThreadText', () => E.exportThreadText(state)) ?? state.posts.map((p) => p.text).join('\n\n---\n\n');
+  const strip = (t) => guard('stripFormatting', () => T.stripFormatting(t)) ?? t;
+  const text = state.posts.map((p) => strip(p.text)).join('\n\n---\n\n');
   try { await navigator.clipboard.writeText(text); flash($('#btn-copy-text'), 'Copied'); }
   catch { flash($('#btn-copy-text'), 'Copy failed'); }
+});
+
+// Rich text on the clipboard, with Unicode-styled characters as the text/plain
+// fallback — so the formatting survives whether or not the target accepts HTML.
+on($('#btn-copy-styled'), 'click', async () => {
+  const sep = '<br><br>';
+  const html = state.posts
+    .map((p) => guard('renderTextHTML', () => T.renderTextHTML(p.text)) ?? '')
+    .join(sep + '—' + sep);
+  const plain = state.posts
+    .map((p) => guard('toUnicodeStyled', () => T.toUnicodeStyled(p.text)) ?? p.text)
+    .join('\n\n---\n\n');
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+      })]);
+    } else {
+      await navigator.clipboard.writeText(plain);
+    }
+    flash($('#btn-copy-styled'), 'Copied');
+  } catch (err) {
+    flash($('#btn-copy-styled'), 'Copy failed');
+  }
 });
 on($('#btn-copy-png'), 'click', async () => {
   const ok = await guard('copyPNG', () => E.copyPNG(previewNode()));
@@ -332,11 +364,58 @@ function flash(btn, msg) {
   setTimeout(() => { btn.textContent = old; }, 1400);
 }
 
+
+/* ── formatting ────────────────────────────────────────────────────── */
+
+const FMT_MARKS = { bold: '**', italic: '*', strike: '~~' };
+
+// Wrap the selection, or unwrap it when it's already wrapped, then push the
+// result back into state. Bold is checked before italic so "**" never reads
+// as two italic markers.
+function applyFormat(kind) {
+  const mark = FMT_MARKS[kind];
+  if (!mark || !editor) return;
+  const val = editor.value;
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const sel = val.slice(start, end);
+  const before = val.slice(Math.max(0, start - mark.length), start);
+  const after = val.slice(end, end + mark.length);
+  let next, caretStart, caretEnd;
+
+  if (sel.length >= mark.length * 2 && sel.startsWith(mark) && sel.endsWith(mark)) {
+    const inner = sel.slice(mark.length, -mark.length);          // unwrap inside the selection
+    next = val.slice(0, start) + inner + val.slice(end);
+    caretStart = start; caretEnd = start + inner.length;
+  } else if (before === mark && after === mark) {
+    next = val.slice(0, start - mark.length) + sel + val.slice(end + mark.length);  // unwrap around it
+    caretStart = start - mark.length; caretEnd = caretStart + sel.length;
+  } else if (!sel) {
+    next = val.slice(0, start) + mark + mark + val.slice(end);   // empty selection: park the caret between
+    caretStart = caretEnd = start + mark.length;
+  } else {
+    next = val.slice(0, start) + mark + sel + mark + val.slice(end);
+    caretStart = start + mark.length; caretEnd = caretStart + sel.length;
+  }
+
+  editor.value = next;
+  update((s) => { const p = activePost(); if (p) p.text = next; });
+  editor.focus();
+  editor.setSelectionRange(caretStart, caretEnd);
+}
+
+on($('#btn-fmt-bold'), 'click', () => applyFormat('bold'));
+on($('#btn-fmt-italic'), 'click', () => applyFormat('italic'));
+on($('#btn-fmt-strike'), 'click', () => applyFormat('strike'));
+
 /* ── keyboard shortcuts ────────────────────────────────────────────── */
 
 document.addEventListener('keydown', (e) => {
   const meta = e.metaKey || e.ctrlKey;
   if (meta && e.key === 's') { e.preventDefault(); const b = $('#btn-draft-save'); if (b) b.click(); }
+  if (meta && !e.shiftKey && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); applyFormat('bold'); }
+  if (meta && !e.shiftKey && (e.key === 'i' || e.key === 'I')) { e.preventDefault(); applyFormat('italic'); }
+  if (meta && e.shiftKey && (e.key === 'x' || e.key === 'X')) { e.preventDefault(); applyFormat('strike'); }
   if (meta && e.key === 'Enter') { e.preventDefault(); const b = $('#btn-add-post'); if (b) b.click(); }
 });
 
